@@ -6,6 +6,7 @@
 - Run `php artisan key:generate`
 - Run `php artisan migrate`
 - Run `php artisan db:seed` to run seeders, if any.
+- Run `php artisan config:cache`
 - Run `php artisan storage:link`
 - Run `npm run dev`
 - Run `php artisan serve`

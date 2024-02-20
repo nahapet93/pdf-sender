@@ -6,6 +6,7 @@ use App\Events\FileSent;
 use App\Mail\PdfSend;
 use App\Models\File;
 use App\Models\User;
+use DefStudio\Telegraph\Exceptions\TelegramWebhookException;
 use DefStudio\Telegraph\Facades\Telegraph;
 use DefStudio\Telegraph\Models\TelegraphBot;
 use DefStudio\Telegraph\Models\TelegraphChat;
@@ -64,20 +65,32 @@ class FileController extends Controller
             }
         }
 
-        $telegraph_bot = TelegraphBot::where('name', 'PdfSender')->first();
-        $telegraph_bot->registerWebhook()->send();
-        foreach ($telegramNicknames as $key => $recipient) {
-            $chat = $telegraph_bot->chats()->firstOrCreate(
-                ['telegraph_bot_id' => $telegraph_bot->id, 'chat_id' => $key],
-                ['chat_id' => $key, 'name' => $recipient]
-            );
+        $telegraph_bot = TelegraphBot::firstOrCreate(
+            ['name' => 'PdfSender'],
+            ['token' => config('app.telegram_bot_token'), 'name' => 'PdfSender'],
+        );
 
-            $sentMessage = $chat->document(Storage::path('public/pdf_files/' . $file->file_name))->send();
-
-            if ($sentMessage) {
-                $sentMessages[] = $sentMessage;
-            }
+        /*try {
+            $telegraph_bot->registerWebhook()->send();
+        } catch (TelegramWebhookException $e) {
+            $request->session()->flash('error', 'Could not send to telegram');
+            $caught = true;
         }
+
+        if (!$caught) {*/
+            foreach ($telegramNicknames as $key => $recipient) {
+                $chat = $telegraph_bot->chats()->firstOrCreate(
+                    ['telegraph_bot_id' => $telegraph_bot->id, 'chat_id' => $key],
+                    ['chat_id' => $key, 'name' => $recipient]
+                );
+
+                $sentMessage = $chat->document(Storage::path('public/pdf_files/' . $file->file_name))->send();
+
+                if ($sentMessage) {
+                    $sentMessages[] = $sentMessage;
+                }
+            }
+        /*}*/
 
         if (count($sentMessages) === count($emails) + count($telegramNicknames)) {
             event(new FileSent());
